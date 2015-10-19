@@ -101,6 +101,9 @@ class TCPRelayHandler(object):
         self._config = config
         self._dns_resolver = dns_resolver
 
+        self._real_url = None      # access host and port
+        self._real_headers = None  # http header
+
         # TCP Relay works as either sslocal or ssserver
         # if is_local, this is sslocal
         self._is_local = is_local
@@ -290,9 +293,20 @@ class TCPRelayHandler(object):
             if header_result is None:
                 raise Exception('can not parse header')
             addrtype, remote_addr, remote_port, header_length = header_result
-            logging.info('connecting %s:%d from %s:%d' %
-                         (common.to_str(remote_addr), remote_port,
-                          self._client_address[0], self._client_address[1]))
+            # logging.info('connecting %s:%d from %s:%d data len(%s),header_length %s %s' %
+            #              (common.to_str(remote_addr), remote_port,
+            #               self._client_address[0], self._client_address[1],len(data), header_length, str(data[header_length:])))
+            try:
+                if len(data) > header_length:
+                    if self._real_url is None:
+                        self._real_url = '%s:%s%s' % (
+                        common.to_str(remote_addr), remote_port, str(data[header_length:]).split(' ', 2)[1])
+                if self._real_url is None:
+                    self._real_url = '%s:%s' % (common.to_str(remote_addr), remote_port)
+            except Exception as e:
+                traceback.print_exc()
+                logging.error(e)
+
             self._remote_address = (common.to_str(remote_addr), remote_port)
             # pause reading
             self._update_stream(STREAM_UP, WAIT_STATUS_WRITING)
@@ -405,7 +419,8 @@ class TCPRelayHandler(object):
             data = self._encryptor.decrypt(data)
             if not data:
                 return
-        if self._stage == STAGE_STREAM:
+
+        if self._stage == STAGE_STREAM:  # 接收流
             if self._is_local:
                 data = self._encryptor.encrypt(data)
             self._write_to_sock(data, self._remote_sock)
@@ -415,11 +430,28 @@ class TCPRelayHandler(object):
             self._write_to_sock(b'\x05\00', self._local_sock)
             self._stage = STAGE_ADDR
             return
-        elif self._stage == STAGE_CONNECTING:
+        elif self._stage == STAGE_CONNECTING:   #  服务端 代理连接
             self._handle_stage_connecting(data)
         elif (is_local and self._stage == STAGE_ADDR) or \
-                (not is_local and self._stage == STAGE_INIT):
+                (not is_local and self._stage == STAGE_INIT):  # 处理 host:port
             self._handle_stage_addr(data)
+        self._log_http(data)
+
+    def _log_http(self,data):
+        if not self._is_local and self._stage == STAGE_INIT:
+            res = parse_header(data)
+            if res is not None:
+                addrtype, remote_addr, remote_port, header_length = res
+                logging.info('-- log http %s  %s:%s ' % (addrtype,remote_addr,remote_port))
+                self._real_url = '%s:%s' % (remote_addr,remote_port)
+        elif self._stage == STAGE_CONNECTING:
+            try:
+                if data:
+                    self._real_url += str(data).split(' ', 2)[1]
+            except Exception as e:
+                pass
+            pass
+        pass
 
     def _on_remote_read(self):
         # handle all remote read events
@@ -526,6 +558,7 @@ class TCPRelayHandler(object):
             # this couldn't happen
             logging.debug('already destroyed')
             return
+        logging.info(' http  -->> %s' % self._real_url)
         self._stage = STAGE_DESTROYED
         if self._remote_address:
             logging.debug('destroy: %s:%d' %
