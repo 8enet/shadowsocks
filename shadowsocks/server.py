@@ -32,7 +32,7 @@ def main():
     shell.check_python()
 
     config = shell.get_config(False)
-
+    shell.get_cus_config(False)
     daemon.daemon_exec(config)
 
     if config['port_password']:

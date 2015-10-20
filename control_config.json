@@ -1,0 +1,12 @@
+{
+  "mongodb_server":"10.0.12.34",
+  "mongodb_port":27017,
+  "mongodb_dbname":"py_db",
+  "mongodb_username":"py_db1",
+  "mongodb_pwd":"admin1",
+  "mongodb_auth_mechanism":"SCRAM-SHA-1",
+  "mongodb_access_doc":"ss_access_log",
+  "filter_user_port":[8388],
+  "filter_access_port":[443],
+  "filter_static_resource":[".css",".js",".png",".jpg",".gif"]
+}

@@ -28,6 +28,7 @@ import random
 
 from shadowsocks import encrypt, eventloop, shell, common
 from shadowsocks.common import parse_header
+from shadowsocks.db import db_client
 
 # we clear at most TIMEOUTS_CLEAN_SIZE timeouts each time
 TIMEOUTS_CLEAN_SIZE = 512
@@ -101,8 +102,7 @@ class TCPRelayHandler(object):
         self._config = config
         self._dns_resolver = dns_resolver
 
-        self._real_url = None      # access host and port
-        self._real_headers = None  # http header
+        self._ac_log = AccessLog() # http access log
 
         # TCP Relay works as either sslocal or ssserver
         # if is_local, this is sslocal
@@ -121,8 +121,13 @@ class TCPRelayHandler(object):
             self._forbidden_iplist = config['forbidden_ip']
         else:
             self._forbidden_iplist = None
+
         if is_local:
             self._chosen_server = self._get_a_server()
+        else:
+            listen_port = config['server_port']
+            self._ac_log.userPort = listen_port
+
         fd_to_handlers[local_sock.fileno()] = self
         local_sock.setblocking(False)
         local_sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
@@ -147,7 +152,7 @@ class TCPRelayHandler(object):
             server_port = random.choice(server_port)
         if type(server) == list:
             server = random.choice(server)
-        logging.debug('chosen server: %s:%d', server, server_port)
+        logging.info('chosen server: %s:%d', server, server_port)
         return server, server_port
 
     def _update_activity(self, data_len=0):
@@ -293,16 +298,21 @@ class TCPRelayHandler(object):
             if header_result is None:
                 raise Exception('can not parse header')
             addrtype, remote_addr, remote_port, header_length = header_result
-            # logging.info('connecting %s:%d from %s:%d data len(%s),header_length %s %s' %
-            #              (common.to_str(remote_addr), remote_port,
-            #               self._client_address[0], self._client_address[1],len(data), header_length, str(data[header_length:])))
+            logging.info('connecting %s:%d from %s:%d' %
+                         (common.to_str(remote_addr), remote_port,
+                          self._client_address[0], self._client_address[1]))
             try:
                 if len(data) > header_length:
-                    if self._real_url is None:
-                        self._real_url = '%s:%s%s' % (
-                        common.to_str(remote_addr), remote_port, str(data[header_length:]).split(' ', 2)[1])
-                if self._real_url is None:
-                    self._real_url = '%s:%s' % (common.to_str(remote_addr), remote_port)
+                    if self._ac_log.hostname is None:
+                        # self._real_url = '%s:%s%s' % (
+                        # common.to_str(remote_addr), remote_port, str(data[header_length:]).split(' ', 2)[1])
+                        self._ac_log.hostname = common.to_str(remote_addr)
+                        self._ac_log.port = remote_port
+                        self._ac_log.headers = data[header_length:]
+                if self._ac_log.hostname is None:
+                    # self._real_url = '%s:%s' % (common.to_str(remote_addr), remote_port)
+                    self._ac_log.hostname = common.to_str(remote_addr)
+                    self._ac_log.port = remote_port
             except Exception as e:
                 traceback.print_exc()
                 logging.error(e)
@@ -442,12 +452,12 @@ class TCPRelayHandler(object):
             res = parse_header(data)
             if res is not None:
                 addrtype, remote_addr, remote_port, header_length = res
-                logging.info('-- log http %s  %s:%s ' % (addrtype,remote_addr,remote_port))
-                self._real_url = '%s:%s' % (remote_addr,remote_port)
+                self._ac_log.hostname = common.to_str(remote_addr)
+                self._ac_log.port = remote_port
         elif self._stage == STAGE_CONNECTING:
             try:
                 if data:
-                    self._real_url += str(data).split(' ', 2)[1]
+                    self._ac_log.headers = data
             except Exception as e:
                 pass
             pass
@@ -558,7 +568,8 @@ class TCPRelayHandler(object):
             # this couldn't happen
             logging.debug('already destroyed')
             return
-        logging.info(' http  -->> %s' % self._real_url)
+        # logging.info(' http  -->> %s' % self._ac_log)
+        save_log(self._ac_log)
         self._stage = STAGE_DESTROYED
         if self._remote_address:
             logging.debug('destroy: %s:%d' %
@@ -747,3 +758,20 @@ class TCPRelay(object):
             self._server_socket.close()
             for handler in list(self._fd_to_handlers.values()):
                 handler.destroy()
+
+class AccessLog(object):
+    def __init__(self):
+        self.hostname = None  # access host server name
+        self.port = 80        # access host port
+        self.headers = None   # header
+        self.userPort = None  # user link port
+
+    def __repr__(self):
+        return '%s:%s%s' % (self.hostname, self.port, str(self.headers) if self.port is not 443 else '')
+
+
+def save_log(log):
+    if log:
+        db_client.insert(log)
+    else:
+        logging.info('save log -- log is None')

@@ -25,6 +25,7 @@ import getopt
 import logging
 from shadowsocks.common import to_bytes, to_str, IPNetwork
 from shadowsocks import encrypt
+from shadowsocks import control_config
 
 
 VERBOSE_LEVEL = 5
@@ -63,11 +64,11 @@ def print_shadowsocks():
     print('Shadowsocks %s' % version)
 
 
-def find_config():
-    config_path = 'config.json'
+def find_config(jsonfile='config.json'):
+    config_path = jsonfile
     if os.path.exists(config_path):
         return config_path
-    config_path = os.path.join(os.path.dirname(__file__), '../', 'config.json')
+    config_path = os.path.join(os.path.dirname(__file__), '../', jsonfile)
     if os.path.exists(config_path):
         return config_path
     return None
@@ -124,6 +125,24 @@ def check_config(config, is_local):
 
     encrypt.try_cipher(config['password'], config['method'])
 
+def get_cus_config(is_local):
+    if not is_local:
+        config_path = find_config('control_config.json')
+        if config_path:
+            logging.info('loading config from %s' % config_path)
+            with open(config_path, 'rb') as f:
+                try:
+                    config = parse_json_in_str(f.read().decode('utf8'))
+                    control_config.mongodb_server = (config['mongodb_server'], int(config['mongodb_port']))
+                    control_config.mongodb_dbname = config['mongodb_dbname']
+                    control_config.mongodb_auth = (config['mongodb_username'], config['mongodb_pwd'],
+                                                   config['mongodb_auth_mechanism'])
+                    control_config.mongodb_access_log_doc_name = config['mongodb_access_doc']
+                    control_config.filter_user_port = config['filter_user_port']
+                    control_config.filter_access_port = config['filter_access_port']
+                    control_config.filter_static_resource = [str(res) for res in config['filter_static_resource']]
+                except ValueError as e:
+                    logging.error(e)
 
 def get_config(is_local):
     global verbose
