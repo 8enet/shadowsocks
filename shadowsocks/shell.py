@@ -140,7 +140,7 @@ def get_cus_config(is_local):
                     control_config.mongodb_access_log_doc_name = config['mongodb_access_doc']
                     control_config.filter_user_port = config['filter_user_port']
                     control_config.filter_access_port = config['filter_access_port']
-                    control_config.filter_static_resource = [str(res) for res in config['filter_static_resource']]
+                    control_config.filter_static_resource = [to_str(res) for res in config['filter_static_resource']]
                 except ValueError as e:
                     logging.error(e)
 

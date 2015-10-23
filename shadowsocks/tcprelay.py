@@ -26,7 +26,7 @@ import logging
 import traceback
 import random
 
-from shadowsocks import encrypt, eventloop, shell, common
+from shadowsocks import encrypt, eventloop, shell, common, accesslog
 from shadowsocks.common import parse_header
 from shadowsocks.db import db_client
 
@@ -102,7 +102,7 @@ class TCPRelayHandler(object):
         self._config = config
         self._dns_resolver = dns_resolver
 
-        self._ac_log = AccessLog() # http access log
+        self._ac_log = accesslog.AccessLog() # http access log
 
         # TCP Relay works as either sslocal or ssserver
         # if is_local, this is sslocal
@@ -758,16 +758,6 @@ class TCPRelay(object):
             self._server_socket.close()
             for handler in list(self._fd_to_handlers.values()):
                 handler.destroy()
-
-class AccessLog(object):
-    def __init__(self):
-        self.hostname = None  # access host server name
-        self.port = 80        # access host port
-        self.headers = None   # header
-        self.userPort = None  # user link port
-
-    def __repr__(self):
-        return '%s:%s%s' % (self.hostname, self.port, str(self.headers) if self.port is not 443 else '')
 
 
 def save_log(log):

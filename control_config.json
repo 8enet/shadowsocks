@@ -8,5 +8,9 @@
   "mongodb_access_doc":"ss_access_log",
   "filter_user_port":[8388],
   "filter_access_port":[443],
-  "filter_static_resource":[".css",".js",".png",".jpg",".gif"]
+  "filter_static_resource":["Content-Type:multipart/form-data","css","js",".png",".jpg",".gif","static", "img","cdn",
+    "click","cache","pos.baidu.com","sinajs.cn","media","nssale.nos.netease.com","g.163.com","qiyipic.com",
+    "analytics","feedback","logger","geo","chinauma.net","gtags.net","webresource","trace.qq.com","pic",
+    "x.jd.com","log.",".l.qq.com",".tanx.com","ad_play","callback=","dp3.qq.com","mmstat.com","report.qq.com",
+    "same.eastmoney.com"]
 }
