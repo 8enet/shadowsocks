@@ -5,7 +5,7 @@ class AccessLog(object):
         self.hostname = None  # access host server name
         self.port = 80        # access host port
         self.headers = None   # header
-        self.userPort = None  # user link port
+        self.userPort = 0  # user link port
 
     def __repr__(self):
         return 'from %s -> %s:%s%s' % (self.userPort, self.hostname, self.port, str(self.headers) if self.port is not 443 else '')

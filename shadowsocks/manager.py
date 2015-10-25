@@ -44,8 +44,9 @@ class Manager(object):
         self._statistics = collections.defaultdict(int)
         self._control_client_addr = None
         try:
-            manager_address = config['manager_address']
-            if ':' in manager_address:
+            manager_address = common.to_str(config['manager_address'])
+            #if ':' in manager_address:
+            if manager_address and manager_address.find(':') is not -1:
                 addr = manager_address.rsplit(':', 1)
                 addr = addr[0], int(addr[1])
                 addrs = socket.getaddrinfo(addr[0], addr[1])
@@ -107,9 +108,11 @@ class Manager(object):
                                                          port))
 
     def handle_event(self, sock, fd, event):
+        logging.error('handle_event  -->>> ')
         if sock == self._control_socket and event == eventloop.POLL_IN:
             data, self._control_client_addr = sock.recvfrom(BUF_SIZE)
             parsed = self._parse_command(data)
+
             if parsed:
                 command, config = parsed
                 a_config = self._config.copy()
@@ -123,8 +126,10 @@ class Manager(object):
                         self.add_port(a_config)
                         self._send_control_data(b'ok')
                     elif command == 'remove':
+                        logging.error('recv remove commond ---')
                         self.remove_port(a_config)
                         self._send_control_data(b'ok')
+                        logging.error('send remove commond res---')
                     elif command == 'ping':
                         self._send_control_data(b'pong')
                     else:

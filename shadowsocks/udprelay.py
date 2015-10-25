@@ -70,6 +70,7 @@ import random
 
 from shadowsocks import encrypt, eventloop, lru_cache, common, shell
 from shadowsocks.common import parse_header, pack_addr
+from shadowsocks.db import traffic_count
 
 
 BUF_SIZE = 65536
@@ -210,6 +211,7 @@ class UDPRelay(object):
         if not data:
             return
         try:
+            traffic_count.traffic_add(server_port,len(data))
             client.sendto(data, (server_addr, server_port))
         except IOError as e:
             err = eventloop.errno_from_exception(e)

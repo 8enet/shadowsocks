@@ -5,9 +5,8 @@
     "8382": "test",
     "8388": "test"
   },
-
+  "manager_address":"127.0.0.1:55055",
   "local_port":10809,
-  "password":"test",
   "timeout":600,
   "method":"table"
 }

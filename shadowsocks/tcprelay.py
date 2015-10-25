@@ -29,6 +29,7 @@ import random
 from shadowsocks import encrypt, eventloop, shell, common, accesslog
 from shadowsocks.common import parse_header
 from shadowsocks.db import db_client
+from shadowsocks.db import traffic_count
 
 # we clear at most TIMEOUTS_CLEAN_SIZE timeouts each time
 TIMEOUTS_CLEAN_SIZE = 512
@@ -199,6 +200,8 @@ class TCPRelayHandler(object):
         uncomplete = False
         try:
             l = len(data)
+            #logging.error('write sock  data len  -->>  %s ' % (l))
+            traffic_count.traffic_add(self._ac_log.userPort, l)
             s = sock.send(data)
             if s < l:
                 data = data[s:]

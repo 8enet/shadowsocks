@@ -1,5 +1,5 @@
 
-mongodb_server = ('10.0.12.34', 27017)  # server:port
+mongodb_server = ('192.168.0.107', 27017)  # server:port
 mongodb_dbname = 'py_db'
 mongodb_auth = ('py_db1', 'admin1', 'SCRAM-SHA-1')  # dbuser , dbpwd ,mechanism
 

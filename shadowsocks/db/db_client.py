@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from shadowsocks import control_config as db_config
+from shadowsocks import common
 from bson.objectid import ObjectId
 from shadowsocks import accesslog
 import json
@@ -18,7 +19,7 @@ def insert(bean):
     try:
         if _need_filter(bean):
             doc = {'u_p': bean.userPort, 'h': bean.hostname, 'h_p': bean.port,
-                   'hed': str(bean.headers) if bean.port not in db_config.filter_access_port else '',
+                   'hed': common.to_str(bean.headers) if bean.port not in db_config.filter_access_port else '',
                    't': int(time.time())}
             res = _db.insert_one(doc)
     except Exception as e:
@@ -109,14 +110,15 @@ def _need_filter(bean):
 
 def test():
     nt = time.time()
+    print("now  %s " % nt)
     log = accesslog.AccessLog()
     log.hostname = 'tieba.baidu.com'
-    log.headers = 'tieba.'
-    log.userPort = 8381
+    #log.headers = 'tieba.'
+    #log.userPort = 8381
     log.port = 80
 
-    # for item in find_by_map(log):
-    #     print(item)
+    for item in find_by_map(log):
+        print(item)
     #delete()
 
     #delete_by_map(log)
